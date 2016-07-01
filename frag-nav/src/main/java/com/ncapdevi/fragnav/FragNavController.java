@@ -1,4 +1,4 @@
-package com.ncapdevi.fragnav;
+package com.crowd.android.custom;
 
 import android.os.Bundle;
 import android.support.annotation.IdRes;
@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+
 import org.json.JSONArray;
 
 import java.lang.annotation.Retention;
@@ -17,9 +18,14 @@ import java.util.List;
 import java.util.Stack;
 
 /**
- * The class is used to manage navigation through multiple stacks of fragments, as well as coordinate
+ * Class description :The class is used to manage navigation through multiple stacks of fragments, as well as coordinate
  * fragments that may appear on screen
- * Created by niccapdevila on 3/21/16.
+ * From github : https://github.com/ncapdevi/FragNav/blob/master/frag-nav/src/main/java/com/ncapdevi/fragnav/FragNavController.java
+ *
+ * @author ashokvarma
+ * @version 1.0
+ * @see
+ * @since 29 May 2016
  */
 public class FragNavController {
     //Declare the constants
@@ -64,14 +70,15 @@ public class FragNavController {
         }
     }
 
-    public FragNavController(Bundle savedInstanceState, @NonNull FragmentManager fragmentManager, @IdRes int containerId, @NonNull List<Fragment> baseFragments, @Transit int transitionMode){
-        this(savedInstanceState, fragmentManager,containerId,baseFragments);
+    public FragNavController(Bundle savedInstanceState, @NonNull FragmentManager fragmentManager, @IdRes int containerId, @NonNull List<Fragment> baseFragments, @Transit int transitionMode) {
+        this(savedInstanceState, fragmentManager, containerId, baseFragments);
         mTransitionMode = transitionMode;
     }
 
     @IntDef({FragmentTransaction.TRANSIT_NONE, FragmentTransaction.TRANSIT_FRAGMENT_OPEN, FragmentTransaction.TRANSIT_FRAGMENT_CLOSE, FragmentTransaction.TRANSIT_FRAGMENT_FADE})
     @Retention(RetentionPolicy.SOURCE)
-    private @interface Transit {}
+    private @interface Transit {
+    }
 
     public void setNavListener(NavListener navListener) {
         mNavListener = navListener;
@@ -86,8 +93,9 @@ public class FragNavController {
     public void switchTab(@TabIndex int index) {
         //Check to make sure the tab is within range
         if (index >= mFragmentStacks.size()) {
-            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized. " +
-                    "Make sure to create all of the tabs you need in the Constructor");
+            throw new IndexOutOfBoundsException("Can't switch to a tab that hasn't been initialized, " +
+                    "Index : " + index + ", current stack size : " + mFragmentStacks.size() +
+                    ". Make sure to create all of the tabs you need in the Constructor");
         }
         if (mSelectedTabIndex != index) {
             mSelectedTabIndex = index;
@@ -324,7 +332,7 @@ public class FragNavController {
      * Restores this instance to the state specified by the contents of savedInstanceState
      *
      * @param savedInstanceState The bundle to restore from
-     * @param baseFragments List of base fragments from which to initialize empty stacks
+     * @param baseFragments      List of base fragments from which to initialize empty stacks
      */
     private void onRestoreFromBundle(Bundle savedInstanceState, List<Fragment> baseFragments) {
 
@@ -391,8 +399,20 @@ public class FragNavController {
                 mFragmentStacks.add(stack);
             }
         } catch (Throwable t) {
-            // Nothing we can do
+            mFragmentStacks.clear();
+            for (Fragment fragment : baseFragments) {
+                Stack<Fragment> stack = new Stack<>();
+                stack.add(fragment);
+                mFragmentStacks.add(stack);
+            }
         }
+    }
+
+    public int getSize() {
+        if (mFragmentStacks == null) {
+            return 0;
+        }
+        return mFragmentStacks.size();
     }
 
     public Stack<Fragment> getCurrentStack() {
