@@ -1,9 +1,19 @@
-apply plugin: 'com.android.library'
-apply plugin: 'com.jfrog.bintray'
-apply plugin: 'com.github.dcendents.android-maven'
+plugins {
+    id "com.jfrog.bintray" version "1.8.0"
+    id "com.github.dcendents.android-maven" version "2.0"
+    id 'com.github.kt3k.coveralls' version '2.5.0-x'
+}
 
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'maven'
+apply plugin: 'com.github.kt3k.coveralls'
 
 ext {
+    libraryVersionCode = 24
+    libraryVersionName = '3.0.0-RC'
+
+    //Bintray and Maven
     bintrayRepo = 'maven'
     bintrayName = 'frag-nav'
 
@@ -16,8 +26,6 @@ ext {
     siteUrl = 'https://github.com/ncapdevi/FragNav'
     gitUrl = 'https://github.com/ncapdevi/FragNav.git'
 
-    libraryVersion = '1.0.3'
-
     developerId = 'ncapdevi'
     developerName = 'Nic Capdevila'
     developerEmail = 'ncapdevi@gmail.com'
@@ -29,27 +37,47 @@ ext {
 
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "24.0.0 rc2"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
 
+    lintOptions{
+        abortOnError false
+    }
     defaultConfig {
-        minSdkVersion 15
-        targetSdkVersion 23
-        versionCode 1
-        versionName "1.0.3"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.compileSdkVersion
+        versionCode libraryVersionCode
+        versionName libraryVersionName
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            testCoverageEnabled true
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
     }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.2.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    implementation "com.android.support:support-fragment:$rootProject.ext.supportVersion"
+    implementation "com.android.support:support-annotations:$rootProject.ext.supportVersion"
+
+    testImplementation "junit:junit:$rootProject.ext.junitVersion"
+    testImplementation "org.mockito:mockito-core:2.13.0"
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.0.0-alpha03"
+    testImplementation "org.robolectric:robolectric:3.7"
+    //testImplementation "org.robolectric:shadows-supportv4:3.7"
+
 }
 
 group = publishedGroupId                               // Maven Group ID for the artifact
@@ -94,7 +122,7 @@ install {
 }
 
 
-version = libraryVersion
+version = libraryVersionName
 
 if (project.hasProperty("android")) { // Android libraries
     task sourcesJar(type: Jar) {
@@ -102,10 +130,10 @@ if (project.hasProperty("android")) { // Android libraries
         from android.sourceSets.main.java.srcDirs
     }
 
-    task javadoc(type: Javadoc) {
+/*    task javadoc(type: Javadoc) {
         source = android.sourceSets.main.java.srcDirs
         classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    }
+    }*/
 } else { // Java libraries
     task sourcesJar(type: Jar, dependsOn: classes) {
         classifier = 'sources'
@@ -113,36 +141,82 @@ if (project.hasProperty("android")) { // Android libraries
     }
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+/*task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from javadoc.destinationDir
-}
+}*/
 
 artifacts {
-    archives javadocJar
+   // archives javadocJar
     archives sourcesJar
 }
 
 // Bintray
-Properties properties = new Properties()
-properties.load(project.rootProject.file('local.properties').newDataInputStream())
-
 bintray {
-    user = properties.getProperty("bintray.user")
-    key = properties.getProperty("bintray.apikey")
+    Properties properties = new Properties()
+    if (project.rootProject.file('local.properties').exists()) {
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
-    configurations = ['archives']
-    pkg {
-        repo = bintrayRepo
-        name = bintrayName
-        desc = libraryDescription
-        websiteUrl = siteUrl
-        vcsUrl = gitUrl
-        licenses = allLicenses
-        publish = true
-        publicDownloadNumbers = true
-        version {
+        user = properties.getProperty("bintray.user")
+        key = properties.getProperty("bintray.apikey")
+
+        configurations = ['archives']
+        pkg {
+            repo = bintrayRepo
+            name = bintrayName
             desc = libraryDescription
+            websiteUrl = siteUrl
+            vcsUrl = gitUrl
+            licenses = allLicenses
+            publish = true
+            publicDownloadNumbers = true
+            version {
+                desc = libraryDescription
+            }
         }
     }
+}
+
+coveralls {
+    jacocoReportPath = "${buildDir}/reports/coverage/debug/report.xml"
+}
+
+tasks.coveralls {
+    dependsOn 'connectedAndroidTest'
+    onlyIf { System.env.'CI' }
+}
+task createPom {
+    pom {
+        project {
+            packaging 'aar'
+
+            name project.name
+            description libraryDescription
+            url siteUrl
+            inceptionYear '2016'
+
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                }
+            }
+            scm {
+                connection gitUrl
+                developerConnection gitUrl
+                url siteUrl
+            }
+            developers {
+                developer {
+                    id 'ncapdevi'
+                    name 'Nic Capdevila'
+                    email 'ncapdevi@gmail.com'
+                }
+            }
+        }
+    }.writeTo("$buildDir/poms/pom-default.xml").writeTo("pom.xml")
+}
+build.dependsOn createPom
+repositories {
+    mavenCentral()
 }
